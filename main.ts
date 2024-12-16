@@ -1,6 +1,7 @@
 import { Plugin, PluginSettingTab, App, Setting, Notice, Tasks, TextComponent, ButtonComponent, ToggleComponent } from 'obsidian';
 import { Octokit } from '@octokit/rest';
 
+//TODO: USE OAuth Device Flow
 class GitSettings {
 	private _gitHubUsername: string = '';
 	private _validGitHubUsername: boolean = false;
