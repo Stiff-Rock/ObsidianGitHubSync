@@ -1,0 +1,42 @@
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+
+      - name: Set tag version
+        id: vars
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Build plugin
+        run: |
+          npm install
+          npm run build
+
+      - name: Create release into zip archive
+        run: |
+          zip -r "GitSync-${TAG}.zip" main.js manifest.json styles.css README.md LICENSE.txt
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --draft \
+            main.js manifest.json styles.css README.md LICENSE.txt \
+            "GitSync-${TAG}.zip"
+
