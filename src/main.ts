@@ -1,5 +1,7 @@
 import { Plugin, PluginSettingTab, App, Setting, Notice, Tasks, TextComponent, ButtonComponent, ToggleComponent } from 'obsidian';
 import { Octokit } from '@octokit/rest';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
+import * as path from 'path';
 
 //TODO: USE OAuth Device Flow
 class GitSettings {
@@ -78,9 +80,13 @@ export default class GitSync extends Plugin {
 	settings: GitSettings;
 	octokit: Octokit
 
+	serverProcess: ChildProcessWithoutNullStreams;
+
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new GitSyncSettingTab(this.app, this));
+
+		await this.startServer();
 
 		this.app.workspace.onLayoutReady(async () => {
 
@@ -92,7 +98,27 @@ export default class GitSync extends Plugin {
 		});
 	}
 
+	async startServer() {
+		const basePath = (this.app.vault.adapter as any).basePath;
+		const serverPath = `${basePath}/.obsidian/plugins/ObsidianGitHubSync/server.js`;
+
+		this.serverProcess = spawn('node', [serverPath]);
+
+		this.serverProcess.stdout.on('data', (data) => {
+			console.log(`Server log: ${data}`);
+		});
+
+		this.serverProcess.stderr.on('data', (data) => {
+			console.error(`Server error: ${data}`);
+		});
+
+		this.serverProcess.on('close', (code) => {
+			console.log(`Server process exited with code ${code}`);
+		});
+	}
+
 	async onunload() {
+		this.serverProcess.kill('SIGINT');
 	}
 
 	async loadSettings() {
@@ -116,8 +142,7 @@ export default class GitSync extends Plugin {
 class GitSyncSettingTab extends PluginSettingTab {
 	plugin: GitSync;
 
-	gitHubUsernameText: TextComponent;
-	gitHubPatText: TextComponent;
+	logInToGitHub: ButtonComponent
 
 	createRepoButton: ButtonComponent
 	deleteRepoButton: ButtonComponent
@@ -139,42 +164,23 @@ class GitSyncSettingTab extends PluginSettingTab {
 
 		//TODO: REVISE STYLES FOR MOBILE, is not consistent
 
-		// GitHub Username
+		// logInToGitHub button
 		new Setting(containerEl)
-			.setName('GitHub Username')
-			.setDesc('Your GitHub Username')
-			.addText(text => {
-				this.gitHubUsernameText = text;
-				text.setValue(this.plugin.settings.gitHubUsername)
-				text.setPlaceholder('JohnDoe74')
-				text.inputEl.classList.add('git-sync-config-field');
-				text.inputEl.onblur = async (event: FocusEvent) => {
-					const value = (event.target as HTMLInputElement).value;
+			.setName('Log In to GitHub')
+			.addButton(async button => {
+				this.createRepoButton = button;
+				button.setButtonText('Log In')
+				button.buttonEl.classList.add('git-sync-config-field')
+				button.onClick(async _ => {
+					const clientId = 'Iv23liLv46rull2EbJvq';
+					const redirectUri = 'http://localhost:3000/callback';
 
-					this.checkGitHubUsername(value);
-
+					const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
+					window.open(githubAuthUrl, "_blank");
 					await this.plugin.saveSettings();
 
-				};
+				})
 			})
-
-		// GitHub Personal Acces Token
-		new Setting(containerEl)
-			.setName('GitHub PAT')
-			.setDesc('Personal access token to authenticate yourself. (If you are using an SSH url you don\'t need to fill this field).')
-			.addText((text) => {
-				this.gitHubPatText = text;
-				text.setPlaceholder('Personal Acces Token')
-				text.setValue(this.plugin.settings.gitHubPat)
-				text.inputEl.classList.add('git-sync-config-field');
-				text.inputEl.setAttribute("type", "password");
-				text.inputEl.onblur = async (event: FocusEvent) => {
-					const value = (event.target as HTMLInputElement).value;
-
-					await this.plugin.saveSettings();
-
-				};
-			});
 
 		// Create repository button
 		new Setting(containerEl)
@@ -295,8 +301,6 @@ class GitSyncSettingTab extends PluginSettingTab {
 		this.enabledFields = [];
 
 		const fields = [
-			this.gitHubPatText.inputEl,
-			this.gitHubUsernameText.inputEl,
 			this.createRepoButton.buttonEl,
 			this.deleteRepoButton.buttonEl,
 			this.pushButton.buttonEl,
@@ -324,5 +328,4 @@ class GitSyncSettingTab extends PluginSettingTab {
 
 		document.body.style.cursor = "default";
 	}
-
 }
