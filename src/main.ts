@@ -1,7 +1,6 @@
 import { Plugin, PluginSettingTab, App, Setting, Notice, Tasks, TextComponent, ButtonComponent, ToggleComponent } from 'obsidian';
 import { Octokit } from '@octokit/rest';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
-import * as path from 'path';
 
 //TODO: USE OAuth Device Flow
 class GitSettings {
