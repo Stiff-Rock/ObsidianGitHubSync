@@ -13,6 +13,8 @@ node_modules
 main.js
 server.js
 
+!src/server.js
+
 # Exclude sourcemaps
 *.map
 
