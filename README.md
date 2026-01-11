@@ -1,7 +1,7 @@
 
-# Obsidian Git Sync
+# Obsidian GitHub Sync
 
-**Obsidian Git Sync** is a plugin for [Obsidian](https://obsidian.md) that syncs your vaults across devices with a GitHub repository.
+**Obsidian GitHub Sync** is a plugin for [Obsidian](https://obsidian.md) that syncs your vaults across devices with a GitHub repository.
 <br>
 - For iOS support, read `Future Plans` section.
   

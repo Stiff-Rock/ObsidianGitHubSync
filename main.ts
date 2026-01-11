@@ -18,6 +18,7 @@ class GitSettings {
 	private _doAutoCommit: boolean = true;
 	private _intervalTime: number = 60000;
 
+	private _doAutomaticPull: boolean = true;
 	private _lastPullTimeStamp: number;
 
 	constructor(data?: Partial<GitSettings>) {
@@ -98,6 +99,15 @@ class GitSettings {
 		return this._isConfigured;
 	}
 
+	// _doAutomaticPull getters and setters
+	get doAutomaticPull(): boolean {
+		return this._doAutomaticPull;
+	}
+
+	set doAutomaticPull(value: boolean) {
+		this._doAutomaticPull = value;
+	}
+
 	// lastPullTimeStamp getters and setters
 	get lastPullTimeStamp(): number {
 		return this._lastPullTimeStamp;
@@ -115,8 +125,10 @@ interface FileInfo {
 	modifiedDate: Date;
 }
 
+//TODO:!!!!Isomorphic-Git!!!!
+
 //TODO: Research some possible conflicts and how to handle them
-//TODO: Change compairson method before pulling/pushing with the single file record
+//TODO: Change compairson method before pulling/pushing with the single file record USING Isomorphic-Git
 //TODO: Optimize possible redundant calls to Obisdian/Githubs APIs
 export default class GitSync extends Plugin {
 	settings: GitSettings;
@@ -149,7 +161,10 @@ export default class GitSync extends Plugin {
 				this.statusBarText.textContent = 'Git Sync: Needs configuration';
 
 			console.log('Synchronizing with vault...');
-			await this.pullVault();
+
+
+			if (this.settings.doAutomaticPull)
+				await this.pullVault();
 		});
 
 		this.app.workspace.on('quit', (tasks: Tasks) => {
@@ -556,7 +571,8 @@ export default class GitSync extends Plugin {
 		}
 	}
 
-	// Function that recursively searches and stores all the folders and files of the repository
+	// TODO: DO SINGLE FILE IMPLEMENTATION
+	// Function that recursively searches and stores all the folders and files of the remote repository
 	async fetchVault(items: any = null): Promise<FileInfo[]> {
 		let files: FileInfo[] = [];
 
@@ -568,6 +584,7 @@ export default class GitSync extends Plugin {
 		try {
 			if (items === null) {
 				console.log('Fetching repository files...')
+
 				const response = await this.octokit.repos.getContent({
 					owner: this.settings.gitHubUsername,
 					repo: this.settings.gitHubRepoName,
@@ -757,7 +774,6 @@ export default class GitSync extends Plugin {
 		return await new Promise<boolean>((resolve) => {
 			new ConflictModal(this.app, resolve, lastLocalMod, lastRepoMod).open();
 		});
-
 	}
 
 	async openEmptyVaultModal(): Promise<boolean> {
@@ -765,7 +781,6 @@ export default class GitSync extends Plugin {
 			new EmptyVaultModal(this.app, resolve).open();
 		});
 	}
-
 
 	// Helper function that fetches and and creates the repository files and folders
 	async downloadRepoFile(file: FileInfo) {
@@ -910,6 +925,7 @@ class GitSyncSettingTab extends PluginSettingTab {
 	pushButton: ButtonComponent
 	fetchButton: ButtonComponent
 
+	automaticPullToggleButton: ToggleComponent
 	autoCommitToggleButton: ToggleComponent
 	intervalTimeText: TextComponent
 
@@ -1058,6 +1074,33 @@ class GitSyncSettingTab extends PluginSettingTab {
 				}
 			});
 
+		// Toggle Pull on startup
+		new Setting(containerEl)
+			.setName('Pull on startup')
+			.setDesc('Wether it should pull from the repository when obsidian starts')
+			.addToggle(async toggle => {
+				this.automaticPullToggleButton = toggle;
+				toggle.setValue(this.plugin.settings.doAutoCommit)
+				toggle.onChange(async (value) => {
+					this.plugin.settings.doAutomaticPull = value;
+					await this.plugin.saveSettings();
+
+					let status = '';
+
+					if (value) {
+						status = 'Pull on startup Enabled';
+					} else {
+						status = 'Pull on startup Disabled';
+					}
+
+					this.plugin.statusBarText.textContent = 'Git Sync: ' + status;
+				})
+
+				if (!this.plugin.settings.isConfigured) {
+					toggle.disabled = false;
+				}
+			});
+
 		// Pull button
 		new Setting(containerEl)
 			.setName('Pull Vault')
@@ -1144,6 +1187,7 @@ class GitSyncSettingTab extends PluginSettingTab {
 			this.deleteRepoButton.buttonEl,
 			this.pushButton.buttonEl,
 			this.fetchButton.buttonEl,
+			this.automaticPullToggleButton,
 			this.autoCommitToggleButton,
 			this.intervalTimeText.inputEl
 		]
@@ -1174,6 +1218,7 @@ class GitSyncSettingTab extends PluginSettingTab {
 			this.deleteRepoButton.buttonEl.disabled = false;
 			this.pushButton.buttonEl.disabled = false;
 			this.fetchButton.buttonEl.disabled = false;
+			this.automaticPullToggleButton.disabled = false;
 			this.autoCommitToggleButton.disabled = false;
 			this.intervalTimeText.inputEl.disabled = false;
 		} else {
@@ -1181,6 +1226,7 @@ class GitSyncSettingTab extends PluginSettingTab {
 			this.deleteRepoButton.buttonEl.disabled = true;
 			this.pushButton.buttonEl.disabled = true;
 			this.fetchButton.buttonEl.disabled = true;
+			this.automaticPullToggleButton.disabled = true;
 			this.autoCommitToggleButton.disabled = true;
 			this.intervalTimeText.inputEl.disabled = true;
 		}

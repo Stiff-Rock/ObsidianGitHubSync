@@ -1,10 +1,10 @@
 {
-	"id": "git-sync",
-	"name": "Git Sync",
+	"id": "github-sync",
+	"name": "GitHub Sync",
 	"version": "0.5.0",
 	"minAppVersion": "0.15.0",
 	"description": "Plugin that syncs your vaults through GitHub",
 	"author": "Stiff-Rock",
 	"authorUrl": "https://github.com/Stiff-Rock",
-	"isDesktopOnly": false 
+	"isDesktopOnly": false
 }
